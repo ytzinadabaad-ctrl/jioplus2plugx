@@ -8,7 +8,9 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { ClientOnly } from "@tanstack/react-router";
+const ChatWidget = lazy(() => import("../components/ChatWidget"));
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -121,6 +123,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <ClientOnly><Suspense fallback={null}><ChatWidget /></Suspense></ClientOnly>
       {/* Floating Telegram button */}
       <a
         href="https://t.me/+27i16q_PeVRmNzFl"

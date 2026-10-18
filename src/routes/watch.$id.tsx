@@ -5,6 +5,7 @@ import { lazy, Suspense } from "react";
 import { channelsQuery } from "@/lib/channels";
 
 const ShakaPlayer = lazy(() => import("@/components/ShakaPlayer"));
+const LiveViewers = lazy(() => import("@/components/LiveViewers"));
 
 export const Route = createFileRoute("/watch/$id")({
   loader: async ({ context, params }) => {
@@ -48,10 +49,13 @@ function Watch() {
           <h1 className="font-display text-2xl font-bold tracking-tight">{ch.name}</h1>
           <p className="text-sm text-muted-foreground">{ch.group}</p>
         </div>
-        <span className="ml-auto flex items-center gap-1.5 rounded-full bg-destructive/15 px-3.5 py-1.5 text-xs font-bold tracking-wider text-destructive">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <ClientOnly><Suspense fallback={null}><LiveViewers channelId={ch.id} /></Suspense></ClientOnly>
+        <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-3.5 py-1.5 text-xs font-bold tracking-wider text-destructive">
           <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
           LIVE
         </span>
+        </div>
       </div>
       {related.length > 0 && (
         <section className="mt-10">

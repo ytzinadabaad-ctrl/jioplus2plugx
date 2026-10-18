@@ -20,17 +20,22 @@ export const Route = createFileRoute("/api/chat")({
           language?: string;
         } | null;
         const messages = (body?.messages ?? [])
-          .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+          .filter(
+            (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
+          )
           .slice(-30)
           .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
         if (!messages.length) return new Response("No messages", { status: 400 });
         const channels = (body?.channels ?? []).slice(0, 300).map((c) => String(c).slice(0, 60));
 
         try {
-          const guide = typeof body?.guide === "string" ? `\n\n${body.guide.slice(0, 8000)}\nUse this guide to answer what is on now / next; if a channel is not listed, say you don't have its schedule right now.` : "";
+          const guide =
+            typeof body?.guide === "string"
+              ? `\n\n${body.guide.slice(0, 8000)}\nUse this guide to answer what is on now / next; if a channel is not listed, say you don't have its schedule right now.`
+              : "";
           const stream = await streamResponse({
             model: "openai/gpt-6-astra",
-             instructions: `${SYSTEM}\n\nResponse language: ${languageInstruction(body?.language)}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${guide}`,
+            instructions: `${SYSTEM}\n\nResponse language: ${languageInstruction(body?.language)}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${guide}`,
             input: messages,
           });
           const enc = new TextEncoder();
@@ -39,7 +44,8 @@ export const Route = createFileRoute("/api/chat")({
               try {
                 for await (const ev of stream) {
                   const e = ev as { type?: string; delta?: string };
-                  if (e.type === "response.output_text.delta" && e.delta) controller.enqueue(enc.encode(e.delta));
+                  if (e.type === "response.output_text.delta" && e.delta)
+                    controller.enqueue(enc.encode(e.delta));
                 }
               } catch (err) {
                 console.error(err);
@@ -52,7 +58,12 @@ export const Route = createFileRoute("/api/chat")({
         } catch (err) {
           console.error(err);
           const status = err instanceof GatewayError && err.httpStatus ? err.httpStatus : 500;
-          const msg = status === 429 ? "Too many messages right now, try again in a moment." : status === 402 ? "The AI is out of credits right now." : "The AI couldn't reply. Please try again.";
+          const msg =
+            status === 429
+              ? "Too many messages right now, try again in a moment."
+              : status === 402
+                ? "The AI is out of credits right now."
+                : "The AI couldn't reply. Please try again.";
           return new Response(msg, { status });
         }
       },

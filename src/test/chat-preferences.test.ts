@@ -3,8 +3,13 @@ import { chatLanguages, discardLegacyChat, languageInstruction } from "@/lib/cha
 
 describe("Plugo preferences", () => {
   it.each([
-    ["hi", "Hindi"], ["en", "English"], ["hinglish", "Hinglish"],
-    ["pa", "Punjabi"], ["bn", "Bengali"], ["te", "Telugu"], ["ta", "Tamil"],
+    ["hi", "Hindi"],
+    ["en", "English"],
+    ["hinglish", "Hinglish"],
+    ["pa", "Punjabi"],
+    ["bn", "Bengali"],
+    ["te", "Telugu"],
+    ["ta", "Tamil"],
   ])("supports %s replies", (value, language) => {
     expect(chatLanguages.some((entry) => entry.value === value)).toBe(true);
     expect(languageInstruction(value)).toContain(language);

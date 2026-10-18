@@ -74,7 +74,7 @@ export default function ProgramGuide({ channelId, fallbackLogo }: { channelId: s
         </h3>
         <div ref={listRef} className="max-h-80 space-y-1 overflow-y-auto pr-1">
           {upcoming.map((p, i) => {
-            const newDay = i === 0 || day(p.start) !== day(upcoming[i - 1].start);
+            const newDay = i === 0 || day(p.start) !== day(upcoming[i - 1]!.start);
             return (
               <div key={p.start}>
                 {newDay && day(p.start) !== day(now) && (

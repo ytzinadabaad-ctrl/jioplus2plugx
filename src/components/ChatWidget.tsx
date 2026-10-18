@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
+import { buildGuideContext } from "@/lib/guide-context";
 import ReactMarkdown from "react-markdown";
 import { MessageCircle, Send, X, Tv, RotateCcw } from "lucide-react";
 import { channelsQuery } from "@/lib/channels";
@@ -15,6 +17,8 @@ export default function ChatWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const { data } = useQuery(channelsQuery);
+  const qc = useQueryClient();
+  const path = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     try {
@@ -36,10 +40,12 @@ export default function ChatWidget() {
     setText("");
     setBusy(true);
     try {
+      const watchingId = path.match(/^\/watch\/([^/]+)/)?.[1] ?? null;
+      const guide = await buildGuideContext(qc, data ?? [], content, watchingId).catch(() => "");
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: next, channels: (data ?? []).map((c) => c.name) }),
+        body: JSON.stringify({ messages: next, channels: (data ?? []).map((c) => c.name), guide }),
       });
       if (!res.ok || !res.body) throw new Error(await res.text());
       const reader = res.body.getReader();

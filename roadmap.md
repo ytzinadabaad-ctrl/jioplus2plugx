@@ -1,0 +1,3 @@
+- [x] Improve Plugo multilingual and guide-grounded replies.
+- [x] Remove saved chat history and verify reload clears chats.
+- [x] Move Telegram join icon to upper-right and verify its link.

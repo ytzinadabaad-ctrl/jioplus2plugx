@@ -47,7 +47,9 @@ export default function ChatWidget() {
   useEffect(() => {
     try {
       discardLegacyChat(localStorage);
-    } catch {}
+    } catch {
+      // Storage may be unavailable; the transcript still stays in memory only.
+    }
   }, []);
   useEffect(() => {
     if (open) inputRef.current?.focus();

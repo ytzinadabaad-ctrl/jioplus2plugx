@@ -4,4 +4,5 @@
 - [x] Fix unrelated chat replies changing earlier schedule answers.
 - [x] Fix preview Forbidden errors and verify channels load.
 - [x] Remove bright chat scrollbar and verify the conversation flow.
-- [ ] Reduce player startup buffering and verify playback and channel switching.
+- [x] Reduce startup buffering; verify settings, retry, and channel switching.
+- [ ] Verify time to first frame on a permitted network — blocked by stream provider HTTP 451 in the test environment.

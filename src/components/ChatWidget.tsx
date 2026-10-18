@@ -65,7 +65,10 @@ export default function ChatWidget() {
     inputRef.current?.focus();
     try {
       const watchingId = path.match(/^\/watch\/([^/]+)/)?.[1] ?? null;
-      const guide = await buildGuideContext(qc, data ?? [], content, watchingId).catch(() => "");
+      const guide = await buildGuideContext(
+        qc, data ?? [], content, watchingId,
+        msgs.filter((m) => m.role === "user").map((m) => m.parts.map((p) => p.text).join("")),
+      ).catch(() => "");
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -149,7 +152,7 @@ export default function ChatWidget() {
               </SelectContent>
             </Select>
           </div>
-          <Conversation className="min-h-0 flex-1">
+          <Conversation className="chat-transcript min-h-0 flex-1">
             <ConversationContent className="gap-3 p-4 text-sm">
               {msgs.length === 0 && (
                 <div className="space-y-2 text-muted-foreground">

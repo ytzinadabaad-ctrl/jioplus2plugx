@@ -254,7 +254,7 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
       onMouseMove={wake}
       onTouchStart={wake}
       onClick={wake}
-      className={`relative flex aspect-video w-full overflow-hidden rounded-2xl bg-background ${idle ? "plugx-idle" : ""}`}
+      className={`plugx-player relative flex aspect-video w-full overflow-hidden rounded-2xl bg-background ${idle ? "plugx-idle" : ""}`}
     >
       <video ref={videoRef} className={`h-full w-full ${MODES[mode]?.cls ?? "object-contain"}`} autoPlay playsInline preload="auto" />
       <div aria-hidden className="plugx-overlay pointer-events-none absolute inset-x-0 top-0 z-[4] h-16 bg-gradient-to-b from-background/60 to-transparent transition-opacity duration-300" />

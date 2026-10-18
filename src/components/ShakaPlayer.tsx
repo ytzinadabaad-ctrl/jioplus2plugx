@@ -131,6 +131,7 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
     let ui: any = null;
     let player: any = null;
     let cancelled = false;
+    const playingController = new AbortController();
     let destroyPromise: Promise<void> | null = null;
     const destroy = () => {
       if (!destroyPromise) {

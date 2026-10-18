@@ -124,13 +124,14 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <ClientOnly><Suspense fallback={null}><ChatWidget /></Suspense></ClientOnly>
-      {/* Floating Telegram button */}
+      {/* Upper-right Telegram join button */}
       <a
         href="https://t.me/+27i16q_PeVRmNzFl"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Join our Telegram channel"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-chart-5 text-primary-foreground shadow-[0_12px_35px_-8px_var(--primary)] transition-transform hover:scale-110 active:scale-95"
+        title="Join our Telegram channel"
+        className="fixed top-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-chart-5 text-primary-foreground shadow-[0_12px_35px_-8px_var(--primary)] transition-transform hover:scale-110 active:scale-95"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7" aria-hidden="true">
           <path d="M21.9 4.6 18.8 19c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9-8.1c.4-.3-.1-.5-.6-.2L6.5 12.6l-4.9-1.5c-1-.3-1-1 .2-1.5l19.2-7.4c.8-.3 1.5.2 1.2 2.4Z" />

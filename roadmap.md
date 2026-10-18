@@ -5,5 +5,5 @@
 - [x] Fix preview Forbidden errors and verify channels load.
 - [x] Remove bright chat scrollbar and verify the conversation flow.
 - [x] Reduce startup buffering; verify settings, retry, and channel switching.
-- [ ] Stabilize sound and quality icons; check sound changes, menus, and fullscreen.
+- [x] Stabilize sound and quality icons; verify mute, resolution selection, and fullscreen with local playback, plus narrow-width menus.
 - [ ] Verify time to first frame on a permitted network — blocked by stream provider HTTP 451 in the test environment.

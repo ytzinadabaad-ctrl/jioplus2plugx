@@ -66,7 +66,10 @@ export default function ChatWidget() {
     try {
       const watchingId = path.match(/^\/watch\/([^/]+)/)?.[1] ?? null;
       const guide = await buildGuideContext(
-        qc, data ?? [], content, watchingId,
+        qc,
+        data ?? [],
+        content,
+        watchingId,
         msgs.filter((m) => m.role === "user").map((m) => m.parts.map((p) => p.text).join("")),
       ).catch(() => "");
       const res = await fetch("/api/chat", {

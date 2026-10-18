@@ -3,9 +3,14 @@ import type { Channel } from "@/lib/channels";
 import { currentIndex, epgQuery, type Program } from "@/lib/epg";
 
 const t = (ms: number) =>
-  new Date(ms).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+  new Date(ms).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
 
-const LIVE_WORDS = /\b(now|live|on air|right now|currently|what'?s on|tonight|today|abhi|chal raha|kya aa raha|schedule|next|later|suggest|recommend|watch|aage|dekhu|dekhein)\b|अभी|चल रहा|क्या देखें|अगला/i;
+const LIVE_WORDS =
+  /\b(now|live|on air|right now|currently|what'?s on|tonight|today|abhi|chal raha|kya aa raha|schedule|next|later|suggest|recommend|watch|aage|dekhu|dekhein)\b|अभी|चल रहा|क्या देखें|अगला/i;
 
 async function load(qc: QueryClient, id: string): Promise<Program[]> {
   try {
@@ -21,7 +26,10 @@ function line(ch: Channel, list: Program[], now: number, upcoming: number) {
   const next = (i >= 0 ? list.slice(i + 1) : list.filter((p) => p.start > now)).slice(0, upcoming);
   if (!cur && !next.length) return "";
   const parts = [`${ch.name} [${ch.group}]`];
-  if (cur) parts.push(`NOW: ${cur.title} (${t(cur.start)}–${t(cur.end)}${cur.genre ? `, ${cur.genre}` : ""})`);
+  if (cur)
+    parts.push(
+      `NOW: ${cur.title} (${t(cur.start)}–${t(cur.end)}${cur.genre ? `, ${cur.genre}` : ""})`,
+    );
   if (next.length) parts.push(`NEXT: ${next.map((p) => `${t(p.start)} ${p.title}`).join("; ")}`);
   return parts.join(" | ");
 }
@@ -55,7 +63,9 @@ export async function buildGuideContext(
   if (!guideQuestion && picked.size === 0) return "";
   if (guideQuestion && picked.size === 0) {
     for (const previous of [...recentUserMessages].reverse()) {
-      const named = channels.filter((c) => previous.toLowerCase().includes(c.name.toLowerCase().replace(/\s+hd$/, "")));
+      const named = channels.filter((c) =>
+        previous.toLowerCase().includes(c.name.toLowerCase().replace(/\s+hd$/, "")),
+      );
       if (named.length) {
         for (const c of named.slice(0, 10)) picked.set(c.id, 5);
         break;
@@ -69,7 +79,9 @@ export async function buildGuideContext(
     const g = groups.find((x) => x && msg.includes(x.toLowerCase().replace(/s$/, "")));
     const pool = g ? channels.filter((c) => c.group === g) : channels;
     // spread across categories when no category was named
-    const sample = g ? pool : groups.flatMap((gr) => pool.filter((c) => c.group === gr).slice(0, 3));
+    const sample = g
+      ? pool
+      : groups.flatMap((gr) => pool.filter((c) => c.group === gr).slice(0, 3));
     for (const c of sample) {
       if (picked.size >= 30) break;
       if (!picked.has(c.id)) picked.set(c.id, 1);

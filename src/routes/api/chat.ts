@@ -14,6 +14,7 @@ export const Route = createFileRoute("/api/chat")({
         const body = (await request.json().catch(() => null)) as {
           messages?: Msg[];
           channels?: string[];
+          nowPlaying?: string;
         } | null;
         const messages = (body?.messages ?? [])
           .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")

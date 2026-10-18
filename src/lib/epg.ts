@@ -1,4 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 
 const EPG_API = "https://jiotvapi.cdn.jio.com/apis/v1.3/getepg/get";
@@ -26,21 +25,20 @@ function img(p?: string) {
   return p.startsWith("http") ? p : IMG + p.replace(/^\//, "");
 }
 
-export const fetchEpg = createServerFn({ method: "GET" })
-  .validator((id: string) => String(id).replace(/[^0-9]/g, "").slice(0, 10))
-  .handler(async ({ data: id }): Promise<Program[]> => {
+/** Loads the guide from the browser (the source allows cross-site reads and blocks server fetches). */
+export async function fetchEpg(rawId: string): Promise<Program[]> {
+    const id = String(rawId).replace(/[^0-9]/g, "").slice(0, 10);
     if (!id) return [];
     const pages = await Promise.all(
       [0, 1].map(async (offset) => {
         try {
           const res = await fetch(`${EPG_API}?offset=${offset}&channel_id=${id}&langId=6`, {
-            headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+            
           });
-          if (!res.ok) { console.log("EPG status", res.status, id); return []; }
+          if (!res.ok) return [];
           const j = (await res.json()) as { epg?: RawEp[] };
           return Array.isArray(j.epg) ? j.epg : [];
-        } catch (e) {
-          console.log("EPG fail", id, e);
+        } catch {
           return [];
         }
       }),
@@ -64,12 +62,12 @@ export const fetchEpg = createServerFn({ method: "GET" })
       });
     }
     return out.sort((a, b) => a.start - b.start);
-  });
+}
 
 export const epgQuery = (id: string) =>
   queryOptions({
     queryKey: ["epg", id],
-    queryFn: () => fetchEpg({ data: id }),
+    queryFn: () => fetchEpg(id),
     staleTime: 10 * 60 * 1000,
   });
 

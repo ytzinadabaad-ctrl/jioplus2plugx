@@ -12,7 +12,7 @@ export interface Program {
   genre: string;
   poster: string;
   cast: string;
-  episode?: number;
+  episode: number | null;
 }
 
 type RawEp = {
@@ -27,7 +27,7 @@ function img(p?: string) {
 }
 
 export const fetchEpg = createServerFn({ method: "GET" })
-  .inputValidator((id: string) => String(id).replace(/[^0-9]/g, "").slice(0, 10))
+  .validator((id: string) => String(id).replace(/[^0-9]/g, "").slice(0, 10))
   .handler(async ({ data: id }): Promise<Program[]> => {
     if (!id) return [];
     const pages = await Promise.all(
@@ -59,7 +59,7 @@ export const fetchEpg = createServerFn({ method: "GET" })
         genre,
         poster: img(ep.episodePoster || ep.episodeThumbnail),
         cast: (ep.starCast || "").trim(),
-        episode: ep.episode_num || undefined,
+        episode: ep.episode_num || null,
       });
     }
     return out.sort((a, b) => a.start - b.start);

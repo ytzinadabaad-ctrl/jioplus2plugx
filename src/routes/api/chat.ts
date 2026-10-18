@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/chat")({
         const body = (await request.json().catch(() => null)) as {
           messages?: Msg[];
           channels?: string[];
-          nowPlaying?: string;
+          guide?: string;
         } | null;
         const messages = (body?.messages ?? [])
           .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
@@ -24,10 +24,10 @@ export const Route = createFileRoute("/api/chat")({
         const channels = (body?.channels ?? []).slice(0, 300).map((c) => String(c).slice(0, 60));
 
         try {
-          const now = typeof body?.nowPlaying === "string" ? `\nThe user is currently watching: ${body.nowPlaying.slice(0, 200)}` : "";
+          const guide = typeof body?.guide === "string" ? `\n\n${body.guide.slice(0, 8000)}\nUse this guide to answer what is on now / next; if a channel is not listed, say you don't have its schedule right now.` : "";
           const stream = await streamResponse({
             model: "openai/gpt-6-astra",
-            instructions: `${SYSTEM}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${now}`,
+            instructions: `${SYSTEM}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${guide}`,
             input: messages,
           });
           const enc = new TextEncoder();

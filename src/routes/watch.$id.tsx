@@ -6,6 +6,7 @@ import { channelsQuery } from "@/lib/channels";
 
 const ShakaPlayer = lazy(() => import("@/components/ShakaPlayer"));
 const LiveViewers = lazy(() => import("@/components/LiveViewers"));
+const ProgramGuide = lazy(() => import("@/components/ProgramGuide"));
 
 export const Route = createFileRoute("/watch/$id")({
   loader: async ({ context, params }) => {
@@ -57,6 +58,7 @@ function Watch() {
         </span>
         </div>
       </div>
+      <ClientOnly><Suspense fallback={null}><ProgramGuide channelId={ch.id} fallbackLogo={ch.logo} /></Suspense></ClientOnly>
       {related.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-4 font-display text-lg font-semibold">More in {ch.group}</h2>

@@ -23,9 +23,10 @@ export const Route = createFileRoute("/api/chat")({
         const channels = (body?.channels ?? []).slice(0, 300).map((c) => String(c).slice(0, 60));
 
         try {
+          const now = typeof body?.nowPlaying === "string" ? `\nThe user is currently watching: ${body.nowPlaying.slice(0, 200)}` : "";
           const stream = await streamResponse({
             model: "openai/gpt-6-astra",
-            instructions: `${SYSTEM}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}`,
+            instructions: `${SYSTEM}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${now}`,
             input: messages,
           });
           const enc = new TextEncoder();

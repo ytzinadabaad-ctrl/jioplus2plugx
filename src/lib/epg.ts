@@ -36,10 +36,11 @@ export const fetchEpg = createServerFn({ method: "GET" })
           const res = await fetch(`${EPG_API}?offset=${offset}&channel_id=${id}&langId=6`, {
             headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
           });
-          if (!res.ok) return [];
+          if (!res.ok) { console.log("EPG status", res.status, id); return []; }
           const j = (await res.json()) as { epg?: RawEp[] };
           return Array.isArray(j.epg) ? j.epg : [];
-        } catch {
+        } catch (e) {
+          console.log("EPG fail", id, e);
           return [];
         }
       }),

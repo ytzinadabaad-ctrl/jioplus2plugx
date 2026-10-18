@@ -31,8 +31,8 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const guide =
             typeof body?.guide === "string"
-              ? `\n\n${body.guide.slice(0, 8000)}\nUse this guide to answer what is on now / next; if a channel is not listed, say you don't have its schedule right now.`
-              : "";
+              ? `\n\n${body.guide.slice(0, 8000)}\nThis snapshot is only for the current schedule question. An omitted channel means not fetched, not proof that an earlier answer was wrong. Answer the latest question; do not retract earlier schedule answers during unrelated conversation. If the user asks for a schedule not present here, say you cannot verify it now.`
+              : "\nNo new guide snapshot was requested for this turn. Answer the latest message naturally without revisiting earlier schedules. Earlier assistant messages are conversation history, not independently verified live guide data.";
           const stream = await streamResponse({
             model: "openai/gpt-6-astra",
             instructions: `${SYSTEM}\n\nResponse language: ${languageInstruction(body?.language)}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${guide}`,

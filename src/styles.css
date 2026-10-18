@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.chat-transcript [class*="overflow"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) var(--card);
+}
+.chat-transcript ::-webkit-scrollbar { width: 6px; }
+.chat-transcript ::-webkit-scrollbar-track { background: var(--card); }
+.chat-transcript ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 6px; }
+.chat-transcript ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
 /*
  * Design system definition.
  *

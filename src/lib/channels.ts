@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { queryOptions } from "@tanstack/react-query";
+import { assertChannelOrigin } from "@/lib/channel-origin";
 
 export const API_URL = "https://premiumplugx.com/gibt/shoebpl.php";
 
@@ -17,30 +18,8 @@ export interface Channel {
   clearkey?: string;
 }
 
-// Only our own site's pages may call this endpoint (Origin/Referer check).
-const ALLOWED_HOSTS = [
-  "localhost",
-  "127.0.0.1",
-  "jiotvplusplugx.lovable.app",
-  "id-preview--a9c03669-5259-4ff9-9faf-827b36d9b6a5.lovable.app",
-];
-
-function assertSameSite(request: Request) {
-  const ref = request.headers.get("origin") ?? request.headers.get("referer") ?? "";
-  // No Origin/Referer = the app's own server-side call (SSR); let it through.
-  if (!ref) return;
-  let host = "";
-  try {
-    host = new URL(ref).hostname;
-  } catch {
-    throw new Error("Forbidden");
-  }
-  const ok = ALLOWED_HOSTS.some((h) => host === h || host.endsWith(".lovable.app"));
-  if (!ok) throw new Error("Forbidden");
-}
-
 export const fetchChannels = createServerFn({ method: "GET" }).handler(async () => {
-  assertSameSite(getRequest());
+  assertChannelOrigin(getRequest());
   const res = await fetch(API_URL, {
     headers: { "User-Agent": "Mozilla/5.0", Referer: "https://premiumplugx.com/" },
   });

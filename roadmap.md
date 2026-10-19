@@ -7,4 +7,4 @@
 - [x] Reduce startup buffering; verify settings, retry, and channel switching.
 - [x] Stabilize sound and quality icons; verify mute, resolution selection, and fullscreen with local playback, plus narrow-width menus.
 - [ ] Verify time to first frame on a permitted network — blocked by stream provider HTTP 451 in the test environment.
-- [ ] Replace Plugo's credit-based AI calls with the requested Rebix Cohere API and verify chat, languages, and guide context.
+- [x] Replace Plugo's credit-based AI calls with the requested Rebix Cohere API; verified real Hindi chat and reload clearing, with language/guide forwarding and failure handling tests passing.

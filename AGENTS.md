@@ -10,4 +10,5 @@
 <!-- LOVABLE:END -->
 - Channels come from an external JSON feed fetched via a server function (avoids CORS); playback uses Shaka Player loaded client-only with ClearKey DRM and the __hdnea__ token appended as a query param (browsers can't send Cookie headers).
 - Compose Plugo with AI Elements and message parts; keep its transcript in React memory only and share language selection rules between client and server to prevent inconsistent replies.
+- Plugo calls the user-selected external AI through a server-side fetch adapter with bounded conversation context and no paid fallback, so provider changes do not alter chat UI or consume built-in AI credits.
 - Keep startup and steady playback settings in a browser-safe player configuration module; serialize Shaka teardown before replacement to prevent competing stream requests.

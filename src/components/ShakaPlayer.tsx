@@ -95,6 +95,45 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
     }
   };
 
+  const togglePip = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+    else v.requestPictureInPicture?.().catch(() => flash("PiP not supported"));
+  };
+
+  const goLive = () => {
+    const v = videoRef.current;
+    if (!v || !v.seekable.length) return;
+    v.currentTime = Math.max(0, v.seekable.end(v.seekable.length - 1) - 3);
+    v.play().catch(() => {});
+    flash("Back to live");
+  };
+
+  const [sleepAt, setSleepAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const sleepLeft = sleepAt ? Math.max(0, Math.ceil((sleepAt - now) / 60000)) : 0;
+  const cycleSleep = () => {
+    const opts = [0, 15, 30, 60];
+    const idx = sleepAt ? opts.findIndex((m) => m >= sleepLeft) : 0;
+    const next = opts[(idx + 1) % opts.length] ?? 0;
+    setNow(Date.now());
+    setSleepAt(next ? Date.now() + next * 60000 : null);
+    flash(next ? `Sleep in ${next} min` : "Sleep timer off");
+  };
+  useEffect(() => {
+    if (!sleepAt) return;
+    const t = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= sleepAt) {
+        videoRef.current?.pause();
+        setSleepAt(null);
+        flash("Sleep timer — paused");
+      }
+    }, 10000);
+    return () => clearInterval(t);
+  }, [sleepAt]);
+
   const toggleFullscreen = () => {
     const c = containerRef.current;
     if (!c) return;
@@ -118,7 +157,8 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
         case "m": v.muted = !v.muted; flash(v.muted ? "Muted" : "Unmuted"); break;
         case "z": cycleMode(); break;
         case "b": cycleBoost(); break;
-        case "p": document.pictureInPictureElement ? document.exitPictureInPicture() : v.requestPictureInPicture?.().catch(() => {}); break;
+        case "p": togglePip(); break;
+        case "l": goLive(); break;
         case "arrowup": e.preventDefault(); v.volume = Math.min(1, v.volume + 0.1); flash(`Volume ${Math.round(v.volume * 100)}%`); break;
         case "arrowdown": e.preventDefault(); v.volume = Math.max(0, v.volume - 0.1); flash(`Volume ${Math.round(v.volume * 100)}%`); break;
       }
@@ -300,13 +340,28 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           {m.label}
         </Button>
       ))}
-      <Button size="sm" onClick={cycleBoost}
-        className={`ml-auto rounded-full px-3 py-1 text-xs font-medium transition-all ${boost ? "bg-primary text-primary-foreground shadow-[0_0_16px_-4px_var(--primary)]" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}>
-        🔊 Boost {boost ? `${(BOOSTS[boost] ?? 1) * 100}%` : "off"}
-      </Button>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={goLive} title="Jump to live" className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground hover:bg-accent">
+          ⟲ Go live
+        </Button>
+        <Button size="sm" onClick={() => setAttempt((a) => a + 1)} title="Reload stream" className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground hover:bg-accent">
+          ↻ Reload
+        </Button>
+        <Button size="sm" onClick={togglePip} title="Picture-in-picture (P)" className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground hover:bg-accent">
+          ⧉ PiP
+        </Button>
+        <Button size="sm" onClick={cycleSleep} title="Sleep timer"
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${sleepAt ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}>
+          ☾ {sleepAt ? `${sleepLeft}m` : "Sleep"}
+        </Button>
+        <Button size="sm" onClick={cycleBoost}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${boost ? "bg-primary text-primary-foreground shadow-[0_0_16px_-4px_var(--primary)]" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}>
+          🔊 Boost {boost ? `${(BOOSTS[boost] ?? 1) * 100}%` : "off"}
+        </Button>
+      </div>
     </div>
     <p className="mt-2 hidden text-[11px] text-muted-foreground sm:block">
-      Shortcuts: Space play · F fullscreen · M mute · Z screen size · B boost · P picture-in-picture · ↑↓ volume
+      Shortcuts: Space play · F fullscreen · M mute · Z screen size · B boost · P picture-in-picture · L go live · ↑↓ volume
     </p>
     </div>
   );

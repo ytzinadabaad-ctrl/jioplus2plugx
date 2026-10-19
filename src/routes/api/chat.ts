@@ -1,8 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamResponse, GatewayError } from "@lovable.dev/ai-gateway";
+import { z } from "zod";
+import { requestRebixReply, RebixError } from "@/lib/rebix-chat";
 import { languageInstruction } from "@/lib/chat-preferences";
 
-type Msg = { role: "user" | "assistant"; content: string };
+const chatBody = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(4000),
+  })).min(1).max(100),
+  channels: z.array(z.string().max(200)).max(2000).optional(),
+  guide: z.string().max(100_000).optional(),
+  language: z.string().max(20).optional(),
+});
 
 const SYSTEM = `You are "Plugo", the friendly, fun AI host of Premium PlugX TV — a free live TV website for India with channels sorted by category (news, sports, movies, kids, music, regional and more).
 Help visitors: suggest channels to watch, explain how to use the site (pick a category, search, tap a channel to play; if a stream stalls, refresh or try another channel), and keep them entertained with jokes, trivia, quizzes, movie/cricket chat and light banter.
@@ -13,57 +22,34 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const body = (await request.json().catch(() => null)) as {
-          messages?: Msg[];
-          channels?: string[];
-          guide?: string;
-          language?: string;
-        } | null;
-        const messages = (body?.messages ?? [])
-          .filter(
-            (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
-          )
-          .slice(-30)
-          .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
-        if (!messages.length) return new Response("No messages", { status: 400 });
-        const channels = (body?.channels ?? []).slice(0, 300).map((c) => String(c).slice(0, 60));
+        const parsed = chatBody.safeParse(await request.json().catch(() => null));
+        if (!parsed.success) return new Response("Invalid chat message", { status: 400 });
+        const body = parsed.data;
+        const messages = body.messages.slice(-5);
+        if (messages.at(-1)?.role !== "user") return new Response("No user message", { status: 400 });
+        const channels = (body.channels ?? []).slice(0, 300).map((c) => c.slice(0, 60));
 
         try {
           const guide =
-            typeof body?.guide === "string"
-              ? `\n\n${body.guide.slice(0, 8000)}\nThis snapshot is only for the current schedule question. An omitted channel means not fetched, not proof that an earlier answer was wrong. Answer the latest question; do not retract earlier schedule answers during unrelated conversation. If the user asks for a schedule not present here, say you cannot verify it now.`
+            body.guide?.trim()
+              ? `\n\n${body.guide.slice(0, 5000)}\nThis snapshot is only for the current schedule question. An omitted channel means not fetched, not proof that an earlier answer was wrong. Answer the latest question; do not retract earlier schedule answers during unrelated conversation. If the user asks for a schedule not present here, say you cannot verify it now.`
               : "\nNo new guide snapshot was requested for this turn. Answer the latest message naturally without revisiting earlier schedules. Earlier assistant messages are conversation history, not independently verified live guide data.";
-          const stream = await streamResponse({
-            model: "openai/gpt-6-astra",
-            instructions: `${SYSTEM}\n\nResponse language: ${languageInstruction(body?.language)}\n\nChannels on the site right now: ${channels.join(", ") || "unknown"}${guide}`,
-            input: messages,
-          });
-          const enc = new TextEncoder();
-          const out = new ReadableStream<Uint8Array>({
-            async start(controller) {
-              try {
-                for await (const ev of stream) {
-                  const e = ev as { type?: string; delta?: string };
-                  if (e.type === "response.output_text.delta" && e.delta)
-                    controller.enqueue(enc.encode(e.delta));
-                }
-              } catch (err) {
-                console.error(err);
-                controller.enqueue(enc.encode("\n\n_Sorry, I lost my signal. Please try again._"));
-              }
-              controller.close();
-            },
-          });
-          return new Response(out, { headers: { "content-type": "text/plain; charset=utf-8" } });
+          const reply = await requestRebixReply(
+            `${SYSTEM}\n\nResponse language: ${languageInstruction(body.language)}\n\nChannels on the site right now: ${channels.join(", ").slice(0, 1200) || "unknown"}${guide}`,
+            messages,
+            request.signal,
+          );
+          return new Response(reply, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
         } catch (err) {
-          console.error(err);
-          const status = err instanceof GatewayError && err.httpStatus ? err.httpStatus : 500;
+          const status = err instanceof RebixError ? err.status : 504;
           const msg =
             status === 429
               ? "Too many messages right now, try again in a moment."
               : status === 402
-                ? "The AI is out of credits right now."
-                : "The AI couldn't reply. Please try again.";
+                 ? "The external AI service is unavailable right now. Try again later."
+                 : status === 403
+                   ? "The AI service refused this request. Please try again later."
+                   : "The AI couldn't reply. Please try again.";
           return new Response(msg, { status });
         }
       },

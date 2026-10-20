@@ -62,7 +62,7 @@ export default function StreamHealth() {
           </span>
           <div>
             <div className="text-[13px] font-extrabold">{isErr ? "Signal interrupted" : info.state === "Playing" ? "Signal locked" : info.state}</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">{HINT[info.state] ?? HINT.Starting}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{HINT[info.state] ?? HINT["Starting"]}</div>
           </div>
         </div>
         <div className="mt-3.5 h-[5px] overflow-hidden rounded-full bg-secondary">

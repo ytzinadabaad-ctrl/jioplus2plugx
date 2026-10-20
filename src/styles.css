@@ -81,8 +81,8 @@
   --card-foreground: oklch(0.96 0.005 260);
   --popover: oklch(0.2 0.012 260);
   --popover-foreground: oklch(0.96 0.005 260);
-  --primary: oklch(0.68 0.21 35);
-  --primary-foreground: oklch(0.15 0.01 260);
+  --primary: oklch(0.567 0.234 27.3);
+  --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.25 0.012 260);
   --secondary-foreground: oklch(0.9 0.005 260);
   --muted: oklch(0.25 0.012 260);
@@ -93,20 +93,20 @@
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.68 0.21 35);
-  --chart-1: oklch(0.68 0.21 35);
+  --ring: oklch(0.567 0.234 27.3);
+  --chart-1: oklch(0.567 0.234 27.3);
   --chart-2: oklch(0.7 0.17 162);
   --chart-3: oklch(0.77 0.19 70);
   --chart-4: oklch(0.6 0.2 250);
   --chart-5: oklch(0.65 0.24 16);
   --sidebar: oklch(0.2 0.012 260);
   --sidebar-foreground: oklch(0.96 0.005 260);
-  --sidebar-primary: oklch(0.68 0.21 35);
+  --sidebar-primary: oklch(0.567 0.234 27.3);
   --sidebar-primary-foreground: oklch(0.15 0.01 260);
   --sidebar-accent: oklch(0.25 0.012 260);
   --sidebar-accent-foreground: oklch(0.96 0.005 260);
   --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.68 0.21 35);
+  --sidebar-ring: oklch(0.567 0.234 27.3);
 }
 
 @layer base {
@@ -121,13 +121,7 @@
   }
 }
 
-/* Hide our custom player overlays (LIVE badge, screen-size button) when Shaka hides its controls */
-.shaka-controls-hidden .plugx-overlay {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Hide our overlays when the viewer is idle (our own timer — works even if Shaka's class doesn't) */
+/* Custom player overlays fade out when the viewer is idle */
 .plugx-idle .plugx-overlay {
   opacity: 0;
   pointer-events: none;
@@ -136,109 +130,55 @@
   cursor: none;
 }
 
-/* Shaka uses SVGs sized in em, not icon fonts. Lock both the glyph and its
-   hit target so inherited typography and lazy-loaded library CSS cannot resize them. */
-.plugx-player.shaka-video-container {
-  container-type: inline-size;
-  container-name: plugx-player;
-  --shaka-icon-size: 48px;
-  --shaka-icon-size-sm: 30px; /* quality, language, mute, settings, fullscreen icons */
-  --shaka-thumb-size: 16px;   /* volume + seek slider handle */
-  --shaka-track-h: 6px;       /* volume + seek slider groove */
-  --shaka-font-size: 16px;    /* settings menu text */
-  --shaka-font-size-sm: 14px;
+/* Netflix-style seek bar: red fill up to --nf-pct, thumb appears on hover */
+.nf-progress {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--primary) var(--nf-pct, 100%),
+    oklch(1 0 0 / 38%) var(--nf-pct, 100%)
+  );
+  transition: height 0.15s;
+}
+.nf-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--primary);
+  transform: scale(0);
+  transition: transform 0.15s;
+  box-shadow: 0 1px 4px oklch(0 0 0);
+}
+.nf-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  transform: scale(0);
+  transition: transform 0.15s;
+}
+.nf-timeline:hover .nf-progress {
+  height: 6px;
+}
+.nf-timeline:hover .nf-progress::-webkit-slider-thumb {
+  transform: scale(1);
+}
+.nf-timeline:hover .nf-progress::-moz-range-thumb {
+  transform: scale(1);
 }
 
-/* The bar is a flex row: when it runs out of room the buttons SHRINK and their icons get
-   clipped/tiny. Never let a button shrink — the spacer absorbs the difference instead. */
-.plugx-player.shaka-video-container .shaka-controls-button-panel > * {
-  flex-shrink: 0 !important;
-  min-width: var(--shaka-icon-size);
-}
-.plugx-player.shaka-video-container .shaka-controls-button-panel > .shaka-spacer {
-  flex-shrink: 1 !important;
-  min-width: 0;
-}
-.plugx-player.shaka-video-container .shaka-controls-button-panel button {
-  flex-shrink: 0;
-  width: var(--shaka-icon-size);
-  min-width: var(--shaka-icon-size);
-  height: var(--shaka-icon-size);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.plugx-player.shaka-video-container .shaka-controls-button-panel .shaka-ui-icon {
-  font-size: var(--shaka-icon-size-sm) !important;
-  width: var(--shaka-icon-size-sm);
-  height: var(--shaka-icon-size-sm);
-  min-width: var(--shaka-icon-size-sm);
-  min-height: var(--shaka-icon-size-sm);
-  flex: 0 0 var(--shaka-icon-size-sm);
-}
-.plugx-player.shaka-video-container .shaka-controls-button-panel > .shaka-play-button .shaka-ui-icon {
-  font-size: 34px !important;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  flex-basis: 34px;
-}
-
-/* The volume slider collapses to zero width unless you hover the speaker icon. Keep it open. */
-.shaka-video-container .shaka-volume-bar-container-allow-hiding {
-  width: 96px !important;
-  opacity: 1 !important;
-}
-
-/* ---- Settings / quality / language menus: bigger, easier-to-tap rows ---- */
-.shaka-video-container .shaka-overflow-menu,
-.shaka-video-container .shaka-settings-menu {
-  min-width: 240px;
-  max-height: min(340px, calc(100% - 80px));
-  padding: 6px;
-  border-radius: 14px;
-  background: oklch(0.16 0.01 260 / 0.94);
-  backdrop-filter: blur(12px);
-  border: 1px solid oklch(1 0 0 / 0.08);
-}
-.shaka-video-container .shaka-overflow-menu button,
-.shaka-video-container .shaka-settings-menu button {
-  font-size: 16px !important;
-  min-height: 46px;
-  padding: 10px 14px;
-}
-.shaka-video-container .shaka-overflow-menu .shaka-ui-icon,
-.shaka-video-container .shaka-settings-menu .shaka-ui-icon {
-  font-size: 24px !important;
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  flex: 0 0 24px;
-}
-.shaka-video-container .shaka-overflow-menu .shaka-current-selection-span,
-.shaka-video-container .shaka-overflow-menu span:not(.shaka-ui-icon) {
-  font-size: 13px;
-}
-.shaka-video-container .shaka-overflow-menu label {
-  font-size: 16px;
-}
-
-/* Phones: hide the slider (tap the speaker / use the phone's buttons) and the duplicate
-   quality/language buttons — they're inside the ⋮ menu — so the bar never gets cramped. */
-@container plugx-player (max-width: 560px) {
-  .shaka-video-container .shaka-volume-bar-container,
-  .shaka-video-container .shaka-volume-bar-container-allow-hiding {
-    display: none !important;
-  }
-  .shaka-video-container .shaka-controls-button-panel > .shaka-resolution-button,
-  .shaka-video-container .shaka-controls-button-panel > .shaka-language-button {
-    display: none !important;
-  }
-  .shaka-video-container .shaka-overflow-menu,
-  .shaka-video-container .shaka-settings-menu {
-    min-width: 210px;
-  }
+/* Volume slider */
+.nf-volume-range {
+  accent-color: oklch(0.98 0 0);
+  cursor: pointer;
 }
 
 @utility no-scrollbar {

@@ -5,7 +5,6 @@ import { ArrowRight, ChevronLeft, ChevronRight, Heart, History, Radio, Search, S
 import { channelsQuery, type Channel } from "@/lib/channels";
 import { useFavorites, useRecent } from "@/lib/favorites";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import BootScreen from "@/components/BootScreen";
 
 export const Route = createFileRoute("/")({
@@ -64,19 +63,10 @@ function Index() {
   const [q, setQ] = useState("");
   const [group, setGroup] = useState("All");
   const [booting, setBooting] = useState(true);
-  const [showJoin, setShowJoin] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setBooting(false), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650);
     return () => window.clearTimeout(timer);
   }, []);
-  useEffect(() => {
-    if (booting) return;
-    try { setShowJoin(!localStorage.getItem("plugx_tg_seen")); } catch { /* Optional prompt must not block browsing. */ }
-  }, [booting]);
-  const dismissJoin = () => {
-    setShowJoin(false);
-    try { localStorage.setItem("plugx_tg_seen", "1"); } catch { /* Browsing still works without storage. */ }
-  };
   const byId = useMemo(() => new Map(data.map(c => [c.id, c])), [data]);
   const groups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -92,7 +82,7 @@ function Index() {
     <main className="catalog-theme min-h-screen bg-background text-foreground">
       {booting && <BootScreen />}
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4 px-4 py-5 pr-20 sm:px-6 sm:pr-24 lg:px-8 lg:pr-24">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <Link to="/" className="flex min-w-0 items-center gap-2.5" aria-label="Premium PlugX TV home">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><Tv className="size-5" /></span>
             <span className="min-w-0"><span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Premium</span><span className="block font-display text-2xl font-bold leading-6">Plug<span className="text-primary">X</span> TV</span></span>
@@ -127,15 +117,6 @@ function Index() {
         </section>
         <footer className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pb-20 pt-5 text-[11px] text-muted-foreground"><span>© {new Date().getFullYear()} Premium PlugX TV</span><a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-foreground"><Send className="size-3" />Telegram updates <ArrowRight className="size-3" /></a></footer>
       </div>
-      <Dialog open={showJoin && !booting} onOpenChange={open => { if (!open) dismissJoin(); }}>
-        <DialogContent className="catalog-theme max-w-sm rounded-lg bg-card p-7 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary"><Send className="size-6" /></div>
-          <DialogTitle className="font-display text-xl">Join our Telegram</DialogTitle>
-          <DialogDescription>New channels, fixes and updates from Premium PlugX TV.</DialogDescription>
-          <Button asChild className="mt-2"><a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" onClick={dismissJoin}><Send />Join channel</a></Button>
-          <Button variant="ghost" onClick={dismissJoin} className="text-muted-foreground">Maybe later</Button>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }

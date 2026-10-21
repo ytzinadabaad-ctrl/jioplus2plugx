@@ -8,8 +8,11 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { ClientOnly } from "@tanstack/react-router";
+import { Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 const ChatWidget = lazy(() => import("../components/ChatWidget"));
 
 import appCss from "../styles.css?url";
@@ -124,23 +127,42 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <ClientOnly><Suspense fallback={null}><ChatWidget /></Suspense></ClientOnly>
-      {/* Upper-right Telegram join button */}
-      <a
-        href="https://t.me/+27i16q_PeVRmNzFl"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Join our Telegram channel"
-        title="Join our Telegram channel"
-        className="fixed top-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-chart-5 text-primary-foreground shadow-[0_12px_35px_-8px_var(--primary)] transition-transform hover:scale-110 active:scale-95"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7" aria-hidden="true">
-          <path d="M21.9 4.6 18.8 19c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9-8.1c.4-.3-.1-.5-.6-.2L6.5 12.6l-4.9-1.5c-1-.3-1-1 .2-1.5l19.2-7.4c.8-.3 1.5.2 1.2 2.4Z" />
-        </svg>
-        <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-background bg-primary" />
-        </span>
-      </a>
+      <ClientOnly><TelegramJoinPrompt /></ClientOnly>
     </QueryClientProvider>
+  );
+}
+
+const TELEGRAM_URL = "https://t.me/+27i16q_PeVRmNzFl";
+const PROMPT_SEEN_KEY = "plugx_tg_prompt";
+
+/** Site-wide Telegram invite message: shown once per browsing session, on every page. */
+function TelegramJoinPrompt() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PROMPT_SEEN_KEY)) return;
+    } catch { /* Storage can be blocked; the message is optional. */ }
+    const timer = window.setTimeout(() => setOpen(true), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    try { sessionStorage.setItem(PROMPT_SEEN_KEY, "1"); } catch { /* Browsing still works without storage. */ }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={next => { if (!next) dismiss(); }}>
+      <DialogContent className="catalog-theme max-w-sm rounded-lg bg-card p-7 text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary"><Send className="size-6" /></div>
+        <DialogTitle className="font-display text-xl">Join our Telegram</DialogTitle>
+        <DialogDescription>New channels, fixes and updates from Premium PlugX TV — straight to your Telegram.</DialogDescription>
+        <div className="mt-2 flex flex-col gap-2">
+          <Button asChild className="w-full"><a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" onClick={dismiss}><Send />Join channel</a></Button>
+          <Button variant="ghost" onClick={dismiss} className="text-muted-foreground">Maybe later</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

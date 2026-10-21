@@ -8,4 +8,4 @@
 - [x] Stabilize sound and quality icons; verify mute, resolution selection, and fullscreen with local playback, plus narrow-width menus.
 - [ ] Verify time to first frame on a permitted network — blocked by stream provider HTTP 451 in the test environment.
 - [x] Replace Plugo's credit-based AI calls with the requested Rebix Cohere API; verified real Hindi chat and reload clearing, with language/guide forwarding and failure handling tests passing.
-- [ ] Match the index reference with compact dark-red styling and a brief boot-up screen; verify search, categories, favourites, and watch navigation.
+- [x] Match the index reference with compact dark-red styling and a brief boot-up screen; verified 1,209 live channel cards, search, favourites, watch navigation, boot reveal, and mobile layout without overflow.

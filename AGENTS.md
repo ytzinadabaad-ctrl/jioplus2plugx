@@ -12,3 +12,4 @@
 - Compose Plugo with AI Elements and message parts; keep its transcript in React memory only and share language selection rules between client and server to prevent inconsistent replies.
 - Plugo calls the user-selected external AI through a server-side fetch adapter with bounded conversation context and no paid fallback, so provider changes do not alter chat UI or consume built-in AI credits.
 - Keep startup and steady playback settings in a browser-safe player configuration module; serialize Shaka teardown before replacement to prevent competing stream requests.
+- Keep the index boot screen presentation-only with an immediate loader-pending state and a short, reduced-motion-aware reveal; never add network work or persistence for decorative startup.

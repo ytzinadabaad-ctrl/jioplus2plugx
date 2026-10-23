@@ -24,6 +24,12 @@ export const STEADY_STREAMING = {
   segmentPrefetchLimit: 2,
 };
 
+/** Seconds behind the live edge to start playback at — close to live, but with a small safety cushion. */
+export const LIVE_EDGE_OFFSET = 4;
+
+/** If playback falls more than this many seconds behind the live edge while playing, snap back to live. */
+export const RESYNC_BEHIND_SECONDS = 30;
+
 export const STARTUP_ABR = {
   enabled: true,
   defaultBandwidthEstimate: 750_000,

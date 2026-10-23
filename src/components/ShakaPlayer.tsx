@@ -6,7 +6,7 @@ import {
   Play, RefreshCw, RotateCcw, RotateCw, Settings, Tv, Volume2, VolumeX, X,
 } from "lucide-react";
 import { parseClearKeys, streamUrl, type Channel } from "@/lib/channels";
-import { STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
+import { LIVE_EDGE_OFFSET, RESYNC_BEHIND_SECONDS, STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
 import { emitPlayer, onSleepTimer } from "@/lib/player-events";
 import { currentIndex, epgQuery } from "@/lib/epg";
 

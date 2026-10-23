@@ -171,10 +171,18 @@ export default function ShakaPlayer({
     else c.requestFullscreen?.().catch(() => {});
   };
 
+  const snapToLive = (v: HTMLVideoElement, offset = LIVE_EDGE_OFFSET) => {
+    if (!v.seekable.length) return false;
+    const end = v.seekable.end(v.seekable.length - 1);
+    const target = Math.max(v.seekable.start(0), end - offset);
+    if (!Number.isFinite(target)) return false;
+    v.currentTime = target;
+    return true;
+  };
+
   const goLive = () => {
     const v = videoRef.current;
-    if (!v || !v.seekable.length) return;
-    v.currentTime = Math.max(0, v.seekable.end(v.seekable.length - 1) - 3);
+    if (!v || !snapToLive(v, 2)) return;
     v.play().catch(() => {});
     flash("Back to live");
   };

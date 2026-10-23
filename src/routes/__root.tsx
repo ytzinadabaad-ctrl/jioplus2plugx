@@ -153,7 +153,8 @@ function TelegramJoinPrompt() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={next => { if (!next) dismiss(); }}>
+    // Non-modal: a modal dialog aria-hides the whole page and can race React hydration on heavy pages.
+    <Dialog modal={false} open={open} onOpenChange={next => { if (!next) dismiss(); }}>
       <DialogContent className="catalog-theme max-w-sm rounded-lg bg-card p-7 text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary"><Send className="size-6" /></div>
         <DialogTitle className="font-display text-xl">Join our Telegram</DialogTitle>

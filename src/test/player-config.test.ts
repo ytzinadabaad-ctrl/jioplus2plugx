@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
+import { LIVE_EDGE_OFFSET, RESYNC_BEHIND_SECONDS, STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
 
 describe("quick playback configuration", () => {
   it("starts with a small cushion before switching to a resilient buffer", () => {
@@ -12,5 +12,11 @@ describe("quick playback configuration", () => {
     expect(STARTUP_ABR.defaultBandwidthEstimate).toBe(750_000);
     expect(STARTUP_ABR.enabled).toBe(true);
     expect(STARTUP_STREAMING.segmentPrefetchLimit).toBe(1);
+  });
+
+  it("starts close to the live edge and re-syncs only when far behind", () => {
+    expect(LIVE_EDGE_OFFSET).toBeGreaterThan(0);
+    expect(LIVE_EDGE_OFFSET).toBeLessThanOrEqual(5);
+    expect(RESYNC_BEHIND_SECONDS).toBeGreaterThan(LIVE_EDGE_OFFSET);
   });
 });

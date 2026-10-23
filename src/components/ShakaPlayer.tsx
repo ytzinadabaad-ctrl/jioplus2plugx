@@ -6,7 +6,7 @@ import {
   Play, RefreshCw, RotateCcw, RotateCw, Settings, Tv, Volume2, VolumeX, X,
 } from "lucide-react";
 import { parseClearKeys, streamUrl, type Channel } from "@/lib/channels";
-import { STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
+import { LIVE_EDGE_OFFSET, RESYNC_BEHIND_SECONDS, STARTUP_ABR, STARTUP_STREAMING, STEADY_STREAMING } from "@/lib/player-config";
 import { emitPlayer, onSleepTimer } from "@/lib/player-events";
 import { currentIndex, epgQuery } from "@/lib/epg";
 
@@ -171,10 +171,18 @@ export default function ShakaPlayer({
     else c.requestFullscreen?.().catch(() => {});
   };
 
+  const snapToLive = (v: HTMLVideoElement, offset = LIVE_EDGE_OFFSET) => {
+    if (!v.seekable.length) return false;
+    const end = v.seekable.end(v.seekable.length - 1);
+    const target = Math.max(v.seekable.start(0), end - offset);
+    if (!Number.isFinite(target)) return false;
+    v.currentTime = target;
+    return true;
+  };
+
   const goLive = () => {
     const v = videoRef.current;
-    if (!v || !v.seekable.length) return;
-    v.currentTime = Math.max(0, v.seekable.end(v.seekable.length - 1) - 3);
+    if (!v || !snapToLive(v, 2)) return;
     v.play().catch(() => {});
     flash("Back to live");
   };
@@ -305,6 +313,7 @@ export default function ShakaPlayer({
   useEffect(() => {
     let player: any = null;
     let cancelled = false;
+    let autoRetried = false;
     const playingController = new AbortController();
     let destroyPromise: Promise<void> | null = null;
     const destroy = () => {
@@ -352,8 +361,8 @@ export default function ShakaPlayer({
         drm: { clearKeys: parseClearKeys(clearKey) },
         streaming: STARTUP_STREAMING,
         manifest: {
-          // Stay a bit further behind the live edge — playing right at the edge causes constant stalls.
-          defaultPresentationDelay: 20,
+          // A modest delay keeps latency low while the startup buffer absorbs edge jitter.
+          defaultPresentationDelay: 10,
           retryParameters: { maxAttempts: 5, baseDelay: 400, timeout: 15000 },
         },
         abr: STARTUP_ABR,
@@ -377,6 +386,15 @@ export default function ShakaPlayer({
       });
       player.addEventListener("error", (e: any) => {
         if (cancelled) return;
+        // One silent automatic reconnect before showing an error — transient manifest/segment failures recover this way.
+        if (!autoRetried) {
+          autoRetried = true;
+          emitPlayer("Stream hiccup — auto-reconnecting", { state: "Connecting", recoveries: attempt + 1 });
+          window.setTimeout(() => {
+            if (!cancelled) setAttempt((a) => a + 1);
+          }, 2500);
+          return;
+        }
         setError(`Playback error (code ${e?.detail?.code ?? "?"})`);
         setLoading(false);
         emitPlayer("Playback error", { state: "Error" });
@@ -407,6 +425,19 @@ export default function ShakaPlayer({
       try {
         await player.load(url);
         if (cancelled) return;
+        // Always start at the live edge, not wherever the manifest's default position happens to be.
+        snapToLive(video);
+        // Live watchdog: if playback drifts too far behind the live edge (stalls, background tab), snap back.
+        const watchdog = window.setInterval(() => {
+          const v = videoRef.current;
+          if (cancelled || !v || v.paused || !v.seekable.length) return;
+          const end = v.seekable.end(v.seekable.length - 1);
+          if (Number.isFinite(end) && end - v.currentTime > RESYNC_BEHIND_SECONDS) {
+            snapToLive(video);
+            emitPlayer("Re-synced to live edge", { state: "Playing" });
+          }
+        }, 5000);
+        playingController.signal.addEventListener("abort", () => window.clearInterval(watchdog), { once: true });
         const seen = new Set<number>();
         setTracks(
           player

@@ -425,6 +425,19 @@ export default function ShakaPlayer({
       try {
         await player.load(url);
         if (cancelled) return;
+        // Always start at the live edge, not wherever the manifest's default position happens to be.
+        snapToLive(video);
+        // Live watchdog: if playback drifts too far behind the live edge (stalls, background tab), snap back.
+        const watchdog = window.setInterval(() => {
+          const v = videoRef.current;
+          if (cancelled || !v || v.paused || !v.seekable.length) return;
+          const end = v.seekable.end(v.seekable.length - 1);
+          if (Number.isFinite(end) && end - v.currentTime > RESYNC_BEHIND_SECONDS) {
+            snapToLive(video);
+            emitPlayer("Re-synced to live edge", { state: "Playing" });
+          }
+        }, 5000);
+        playingController.signal.addEventListener("abort", () => window.clearInterval(watchdog), { once: true });
         const seen = new Set<number>();
         setTracks(
           player

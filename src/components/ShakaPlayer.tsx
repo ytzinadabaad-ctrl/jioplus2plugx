@@ -313,6 +313,7 @@ export default function ShakaPlayer({
   useEffect(() => {
     let player: any = null;
     let cancelled = false;
+    let autoRetried = false;
     const playingController = new AbortController();
     let destroyPromise: Promise<void> | null = null;
     const destroy = () => {
@@ -385,6 +386,15 @@ export default function ShakaPlayer({
       });
       player.addEventListener("error", (e: any) => {
         if (cancelled) return;
+        // One silent automatic reconnect before showing an error — transient manifest/segment failures recover this way.
+        if (!autoRetried) {
+          autoRetried = true;
+          emitPlayer("Stream hiccup — auto-reconnecting", { state: "Connecting", recoveries: attempt + 1 });
+          window.setTimeout(() => {
+            if (!cancelled) setAttempt((a) => a + 1);
+          }, 2500);
+          return;
+        }
         setError(`Playback error (code ${e?.detail?.code ?? "?"})`);
         setLoading(false);
         emitPlayer("Playback error", { state: "Error" });

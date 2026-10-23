@@ -27,7 +27,7 @@ const TELEGRAM_URL = "https://t.me/+27i16q_PeVRmNzFl";
 function ChannelCard({ channel, favourite, onFavourite }: { channel: Channel; favourite: boolean; onFavourite: () => void }) {
   const [failedLogo, setFailedLogo] = useState(false);
   return (
-    <article className="group relative min-w-0 overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/60">
+    <article className="group relative min-w-0 overflow-hidden rounded-lg border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_14px_30px_-14px_var(--primary)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <Link to="/watch/$id" params={{ id: channel.id }} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary" aria-label={`Watch ${channel.name}`}>
         <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-background p-5">
           <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-sm bg-primary px-1.5 py-0.5 text-[8px] font-bold text-primary-foreground"><span className="size-1 rounded-full bg-primary-foreground" /> LIVE</span>
@@ -69,6 +69,18 @@ function Index() {
     const timer = window.setTimeout(() => setBooting(false), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650);
     return () => window.clearTimeout(timer);
   }, []);
+  // Press "/" anywhere to jump straight into channel search.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      document.getElementById("channel-search")?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const byId = useMemo(() => new Map(data.map(c => [c.id, c])), [data]);
   const groups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -92,7 +104,7 @@ function Index() {
           <span className="ml-2 hidden items-center gap-1.5 text-[10px] font-semibold text-muted-foreground lg:flex"><Radio className="size-3.5 text-primary" />{data.length} LIVE CHANNELS</span>
           <div className="relative w-full sm:ml-auto sm:w-[300px] lg:w-[360px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input type="search" aria-label="Search channels" value={q} onChange={e => setQ(e.target.value)} placeholder="Search channels…" className="h-10 w-full rounded-md border border-input bg-card pl-10 pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary [&::-webkit-search-cancel-button]:appearance-none" />
+            <input id="channel-search" type="search" aria-label="Search channels" value={q} onChange={e => setQ(e.target.value)} placeholder="Search channels…  ( / )" className="h-10 w-full rounded-md border border-input bg-card pl-10 pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary [&::-webkit-search-cancel-button]:appearance-none" />
             {q && <Button size="icon-sm" variant="ghost" onClick={() => setQ("")} aria-label="Clear search" className="absolute right-1 top-1 size-8 text-muted-foreground"><X /></Button>}
           </div>
         </div>

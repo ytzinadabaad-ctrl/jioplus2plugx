@@ -57,7 +57,9 @@ function Tray({ title, items, recent = false }: { title: string; items: Channel[
 }
 
 function Index() {
-  const { data } = useSuspenseQuery(channelsQuery);
+  const { data: rawData } = useSuspenseQuery(channelsQuery);
+  // The feed can repeat ids; keep the first occurrence so keys stay unique and counts are honest.
+  const data = useMemo(() => Array.from(new Map(rawData.map(c => [c.id, c])).values()), [rawData]);
   const { favs, isFav, toggle } = useFavorites();
   const recent = useRecent();
   const [q, setQ] = useState("");

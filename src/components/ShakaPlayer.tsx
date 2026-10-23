@@ -361,8 +361,8 @@ export default function ShakaPlayer({
         drm: { clearKeys: parseClearKeys(clearKey) },
         streaming: STARTUP_STREAMING,
         manifest: {
-          // Stay a bit further behind the live edge — playing right at the edge causes constant stalls.
-          defaultPresentationDelay: 20,
+          // A modest delay keeps latency low while the startup buffer absorbs edge jitter.
+          defaultPresentationDelay: 10,
           retryParameters: { maxAttempts: 5, baseDelay: 400, timeout: 15000 },
         },
         abr: STARTUP_ABR,

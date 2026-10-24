@@ -79,7 +79,7 @@ export default function JwPlayer({ channel }: { channel: Channel }) {
             ) {
               reqUrl += (reqUrl.includes("?") ? "&" : "?") + "__hdnea__=" + token;
             }
-            return origOpen.call(this, method, reqUrl, ...rest);
+            return (origOpen as any).call(this, method, reqUrl, ...rest);
           };
           restoreXhr = () => {
             XMLHttpRequest.prototype.open = origOpen;

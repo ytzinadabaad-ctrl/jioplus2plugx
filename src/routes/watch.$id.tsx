@@ -14,6 +14,7 @@ import StreamHealth from "@/components/player/StreamHealth";
 import ActivityLog from "@/components/player/ActivityLog";
 
 const ShakaPlayer = lazy(() => import("@/components/ShakaPlayer"));
+const JwPlayer = lazy(() => import("@/components/JwPlayer"));
 const LiveViewers = lazy(() => import("@/components/LiveViewers"));
 const ProgramGuide = lazy(() => import("@/components/ProgramGuide"));
 
@@ -121,6 +122,15 @@ function Watch() {
   const { data } = useSuspenseQuery(channelsQuery);
   const { isFav, toggle } = useFavorites();
   const [theater, setTheater] = useState(false);
+  const [engine, setEngine] = useState<"shaka" | "jw">("shaka");
+
+  useEffect(() => {
+    if (localStorage.getItem("plugx_engine") === "jw") setEngine("jw");
+  }, []);
+  const pickEngine = (e: "shaka" | "jw") => {
+    setEngine(e);
+    localStorage.setItem("plugx_engine", e);
+  };
   const ch = data.find((c) => c.id === id)!;
   const sameGroup = data.filter((c) => c.group === ch.group);
   const idx = sameGroup.findIndex((c) => c.id === ch.id);

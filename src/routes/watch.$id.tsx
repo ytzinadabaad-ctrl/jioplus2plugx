@@ -207,22 +207,50 @@ function Watch() {
         </Link>
       </div>
 
+      {/* player engine switch */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">Player engine</span>
+        {(
+          [
+            ["shaka", "🔮 Shaka Player"],
+            ["jw", "🎬 JW Player"],
+          ] as const
+        ).map(([e, label]) => (
+          <button
+            key={e}
+            onClick={() => pickEngine(e)}
+            aria-pressed={engine === e}
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+              engine === e
+                ? "border-primary bg-primary/15 text-foreground"
+                : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* stage */}
       <div className={`grid items-start gap-4 ${theater ? "" : "lg:grid-cols-[minmax(0,1fr)_320px]"}`}>
         <ClientOnly fallback={<div className="aspect-video w-full rounded-[26px] border border-border bg-card" />}>
           <Suspense fallback={<div className="aspect-video w-full rounded-[26px] border border-border bg-card" />}>
-            <ShakaPlayer
-              channel={ch}
-              fav={isFav(ch.id)}
-              onToggleFav={() => toggle(ch.id)}
-              theater={theater}
-              onToggleTheater={() => setTheater((v) => !v)}
-              metaExtra={
-                <Suspense fallback={null}>
-                  <LiveViewers channelId={ch.id} />
-                </Suspense>
-              }
-            />
+            {engine === "jw" ? (
+              <JwPlayer channel={ch} />
+            ) : (
+              <ShakaPlayer
+                channel={ch}
+                fav={isFav(ch.id)}
+                onToggleFav={() => toggle(ch.id)}
+                theater={theater}
+                onToggleTheater={() => setTheater((v) => !v)}
+                metaExtra={
+                  <Suspense fallback={null}>
+                    <LiveViewers channelId={ch.id} />
+                  </Suspense>
+                }
+              />
+            )}
           </Suspense>
         </ClientOnly>
         {!theater && (

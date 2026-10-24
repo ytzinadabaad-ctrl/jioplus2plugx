@@ -12,4 +12,5 @@
 - [x] Replace Plugo's credit-based AI calls with the requested Rebix Cohere API; verified real Hindi chat and reload clearing, with language/guide forwarding and failure handling tests passing.
 - [x] Match the index reference with compact dark-red styling and a brief boot-up screen; verified live channel cards, search, favourites, watch navigation, boot reveal, and mobile layout without overflow.
 - [x] Start playback at the live edge, auto re-sync watchdog, one silent auto-reconnect on stream error, and dedupe repeated channel ids on the index.
-- [ ] Confirm TelegramJoinPrompt visual appearance (boot screen overlapped the screenshot).
+- [x] Confirm TelegramJoinPrompt visual appearance (screenshot verified: centered dark-red dialog, Join/Maybe later).
+- [x] Make the Telegram prompt non-modal — modal aria-hide raced React hydration and broke page listeners ("/" search shortcut).

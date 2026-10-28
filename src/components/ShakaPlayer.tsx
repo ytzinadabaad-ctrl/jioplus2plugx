@@ -127,9 +127,12 @@ function patchNetworkLayer(token: string | null) {
 
 // ═══════════════════════════════════════════════════════════════
 //  REACT COMPONENT
+//  Key fix: the player's inner div is created via DOM API, NOT
+//  via JSX, so React never tracks its children. This prevents
+//  the "removeChild" crash when Shaka UI rearranges the DOM.
 // ═══════════════════════════════════════════════════════════════
 export default function ShakaPlayer({ channel }: { channel: Channel }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const destroyedRef = useRef(false);
 
@@ -137,6 +140,15 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
     ensureShakaCss();
     destroyedRef.current = false;
     let player: any = null;
+
+    // Create a standalone container div that React does NOT manage.
+    // Shaka UI Overlay will rearrange children inside this div —
+    // since React doesn't know about it, no "removeChild" crash.
+    const container = document.createElement("div");
+    container.style.cssText = "width:100%;height:100%;position:relative;background:#000;";
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    wrapper.appendChild(container);
 
     const hdneaToken = extractToken(channel);
     const clearKeys = parseClearKeysRaw(channel.clearkey);
@@ -151,17 +163,13 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
     (async () => {
       try {
         const shaka = await loadShaka();
-        if (destroyedRef.current || !containerRef.current) return;
+        if (destroyedRef.current) return;
 
         shaka.polyfill.installAll();
         if (!shaka.Player.isBrowserSupported()) {
           emitPlayer("Browser not supported", { state: "Error" });
           return;
         }
-
-        // Build DOM
-        const container = containerRef.current;
-        container.innerHTML = "";
 
         const videoEl = document.createElement("video");
         videoEl.autoplay = true;
@@ -179,7 +187,7 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           return;
         }
 
-        // Shaka UI overlay
+        // Shaka UI overlay (creates .shaka-video-container etc.)
         try {
           new shaka.ui.Overlay(player, container, videoEl);
         } catch {}
@@ -289,18 +297,20 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
         player.destroy().catch(() => {});
       }
       playerRef.current = null;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
+      // Remove our manually-created container — React doesn't know about it
+      if (wrapper && container.parentNode === wrapper) {
+        wrapper.removeChild(container);
       }
     };
   }, [channel.id, channel.mpd_url, channel.clearkey]);
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-border bg-black shadow-[0_32px_90px_rgba(0,0,0,.45)] sm:rounded-[26px]">
+      {/* wrapperRef is an empty div — React never renders children inside it.
+          The player container is created via DOM API in useEffect. */}
       <div
-        ref={containerRef}
+        ref={wrapperRef}
         className="aspect-video w-full bg-black"
-        style={{ position: "relative" }}
       />
     </div>
   );

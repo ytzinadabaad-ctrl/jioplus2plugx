@@ -4,6 +4,7 @@ export interface PlayerInfo {
   state: string;
   recoveries: number;
   quality: string;
+  ua?: string;
 }
 
 const EVENT = "plugx:player";
@@ -15,7 +16,7 @@ export function emitPlayer(text: string, patch?: Partial<PlayerInfo>) {
 }
 
 export function usePlayerInfo(): PlayerInfo {
-  const [info, setInfo] = useState<PlayerInfo>({ state: "Starting", recoveries: 0, quality: "Auto" });
+  const [info, setInfo] = useState<PlayerInfo>({ state: "Starting", recoveries: 0, quality: "Auto", ua: "Auto" });
   useEffect(() => {
     const onEvent = (e: Event) => {
       const d = (e as CustomEvent).detail ?? {};
@@ -23,6 +24,7 @@ export function usePlayerInfo(): PlayerInfo {
         state: typeof d.state === "string" ? d.state : i.state,
         recoveries: typeof d.recoveries === "number" ? d.recoveries : i.recoveries,
         quality: typeof d.quality === "string" ? d.quality : i.quality,
+        ua: typeof d.ua === "string" ? d.ua : i.ua,
       }));
     };
     window.addEventListener(EVENT, onEvent);

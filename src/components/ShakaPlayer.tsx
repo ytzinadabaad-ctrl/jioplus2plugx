@@ -1,13 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Channel } from "@/lib/channels";
 import { emitPlayer } from "@/lib/player-events";
 
 // ═══════════════════════════════════════════════════════════════
-//  CONFIG — same as your working standalone player
+//  CONFIG
 // ═══════════════════════════════════════════════════════════════
 const COOKIE_NAME = "__hdnea__";
 const REFERER = "https://www.jiotv.co/";
-const USER_AGENT = "plaYtv/7.1.5 (Linux; Android 13) ExoPlayerLib/2.11.6";
 const CDN_HOSTS = [
   "jiotvpllive.cdn.jio.com",
   "jiotvmblive.cdn.jio.com",
@@ -15,6 +14,36 @@ const CDN_HOSTS = [
   "jiocinema.com",
   "media.jio.com",
 ];
+
+// ═══════════════════════════════════════════════════════════════
+//  USER AGENT POOL
+// ═══════════════════════════════════════════════════════════════
+export const UA_POOL = {
+  android: "plaYtv/7.1.5 (Linux; Android 13) ExoPlayerLib/2.11.6",
+  windows:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  ios: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  ios_app: "Hotstar/25.02.24.8.11169 (iPhone; iOS 17.5.1; Scale/3.00)",
+} as const;
+
+export type UaKey = keyof typeof UA_POOL | "auto";
+
+export function selectUserAgent(forced?: string | null): string {
+  if (forced && forced !== "auto" && forced in UA_POOL) {
+    return UA_POOL[forced as keyof typeof UA_POOL];
+  }
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("ua");
+    if (q && q in UA_POOL) {
+      return UA_POOL[q as keyof typeof UA_POOL];
+    }
+    const ua = (navigator.userAgent || "").toLowerCase();
+    if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) return UA_POOL.ios;
+    if (ua.includes("windows")) return UA_POOL.windows;
+  }
+  return UA_POOL.android;
+}
 
 const SHAKA_JS = "https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js";
 const SHAKA_CSS = "https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css";
@@ -86,15 +115,21 @@ function loadShaka(): Promise<any> {
   return shakaPromise;
 }
 
-// XHR + fetch monkey-patching
-let xhrPatched = false;
-function patchNetworkLayer(token: string | null) {
-  if (xhrPatched || !token) return;
-  xhrPatched = true;
+// XHR + fetch monkey-patching with dynamic User-Agent and Token
+let networkPatched = false;
+let activeToken: string | null = null;
+let activeUserAgent: string = UA_POOL.android;
+
+function patchNetworkLayer(token: string | null, userAgent: string) {
+  activeToken = token;
+  activeUserAgent = userAgent;
+
+  if (networkPatched) return;
+  networkPatched = true;
 
   function inject(url: string) {
-    if (!isCdn(url) || url.includes(COOKIE_NAME + "=")) return url;
-    return url + (url.includes("?") ? "&" : "?") + COOKIE_NAME + "=" + token;
+    if (!isCdn(url) || !activeToken || url.includes(COOKIE_NAME + "=")) return url;
+    return url + (url.includes("?") ? "&" : "?") + COOKIE_NAME + "=" + activeToken;
   }
 
   const origOpen = XMLHttpRequest.prototype.open;
@@ -108,7 +143,7 @@ function patchNetworkLayer(token: string | null) {
   const origSet = XMLHttpRequest.prototype.setRequestHeader;
   XMLHttpRequest.prototype.setRequestHeader = function (h: string, v: string) {
     if (h.toLowerCase() === "referer") v = REFERER;
-    if (h.toLowerCase() === "user-agent") v = USER_AGENT;
+    if (h.toLowerCase() === "user-agent") v = activeUserAgent;
     return origSet.call(this, h, v);
   };
 
@@ -120,6 +155,20 @@ function patchNetworkLayer(token: string | null) {
       if (patched !== url) {
         input = typeof input === "string" ? patched : new Request(patched, input);
       }
+      if (init && init.headers) {
+        const hdrs = init.headers;
+        if (typeof Headers !== "undefined" && hdrs instanceof Headers) {
+          if (!hdrs.has("User-Agent")) hdrs.set("User-Agent", activeUserAgent);
+        } else if (Array.isArray(hdrs)) {
+          if (!hdrs.some(([k]) => k.toLowerCase() === "user-agent")) {
+            hdrs.push(["User-Agent", activeUserAgent]);
+          }
+        } else {
+          if (!Object.keys(hdrs).some((k) => k.toLowerCase() === "user-agent")) {
+            hdrs["User-Agent"] = activeUserAgent;
+          }
+        }
+      }
     } catch {}
     return origFetch.call(window, input, init);
   };
@@ -127,38 +176,97 @@ function patchNetworkLayer(token: string | null) {
 
 // ═══════════════════════════════════════════════════════════════
 //  REACT COMPONENT
-//  Key fix: the player's inner div is created via DOM API, NOT
-//  via JSX, so React never tracks its children. This prevents
-//  the "removeChild" crash when Shaka UI rearranges the DOM.
+//  Key architectural guarantee: wrapperRef is completely empty
+//  from React's perspective. The inner player container is
+//  created via DOM API inside useEffect to completely prevent
+//  React "removeChild" hydration / reconciliation crashes.
 // ═══════════════════════════════════════════════════════════════
 export default function ShakaPlayer({ channel }: { channel: Channel }) {
+  const [uaKey, setUaKey] = useState<UaKey>(() => {
+    if (typeof window === "undefined") return "auto";
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("ua") as UaKey;
+    if (q && (q === "auto" || q in UA_POOL)) return q;
+    const saved = localStorage.getItem("plugx_ua") as UaKey;
+    if (saved && (saved === "auto" || saved in UA_POOL)) return saved;
+    return "auto";
+  });
+  const [stretchMode, setStretchMode] = useState<string>("stretch");
+  const [qualityTracks, setQualityTracks] = useState<Array<{ height: number; bandwidth: number }>>([]);
+  const [selectedQuality, setSelectedQuality] = useState<string>("auto");
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
   const destroyedRef = useRef(false);
+
+  const handleUaChange = (newKey: UaKey) => {
+    setUaKey(newKey);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("plugx_ua", newKey);
+      const url = new URL(window.location.href);
+      if (newKey === "auto") {
+        url.searchParams.delete("ua");
+      } else {
+        url.searchParams.set("ua", newKey);
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  const handleStretchChange = (mode: string) => {
+    setStretchMode(mode);
+    const v = videoElRef.current;
+    if (v) {
+      const fit = mode === "stretch" ? "fill" : mode;
+      v.style.setProperty("object-fit", fit, "important");
+    }
+  };
+
+  const handleQualityChange = (val: string) => {
+    setSelectedQuality(val);
+    const p = playerRef.current;
+    if (!p) return;
+    try {
+      if (val === "auto") {
+        p.configure({ abr: { enabled: true } });
+      } else {
+        const height = Number(val);
+        p.configure({ abr: { enabled: false } });
+        const tracks = p.getVariantTracks();
+        const pick = tracks.find((t: any) => t.height === height);
+        if (pick) {
+          p.selectVariantTrack(pick, true);
+        }
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     ensureShakaCss();
     destroyedRef.current = false;
+    setErrorMessage(null);
     let player: any = null;
 
-    // Create a standalone container div that React does NOT manage.
-    // Shaka UI Overlay will rearrange children inside this div —
-    // since React doesn't know about it, no "removeChild" crash.
+    const chosenUa = selectUserAgent(uaKey);
+    const hdneaToken = extractToken(channel);
+    const clearKeys = parseClearKeysRaw(channel.clearkey);
+
+    patchNetworkLayer(hdneaToken, chosenUa);
+
+    // Create a standalone container div that React does NOT manage
     const container = document.createElement("div");
     container.style.cssText = "width:100%;height:100%;position:relative;background:#000;";
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
     wrapper.appendChild(container);
 
-    const hdneaToken = extractToken(channel);
-    const clearKeys = parseClearKeysRaw(channel.clearkey);
-
     let url = channel.mpd_url.replace("bpk-tv//", "bpk-tv/");
     if (hdneaToken && !url.includes(COOKIE_NAME + "=")) {
       url += (url.includes("?") ? "&" : "?") + COOKIE_NAME + "=" + hdneaToken;
     }
-
-    patchNetworkLayer(hdneaToken);
 
     (async () => {
       try {
@@ -167,7 +275,8 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
 
         shaka.polyfill.installAll();
         if (!shaka.Player.isBrowserSupported()) {
-          emitPlayer("Browser not supported", { state: "Error" });
+          setErrorMessage("Browser not supported");
+          emitPlayer("Browser not supported", { state: "Error", ua: uaKey });
           return;
         }
 
@@ -175,8 +284,10 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
         videoEl.autoplay = true;
         videoEl.muted = true;
         videoEl.playsInline = true;
-        videoEl.style.cssText = "width:100%;height:100%;object-fit:fill;background:#000;";
+        const initialFit = stretchMode === "stretch" ? "fill" : stretchMode;
+        videoEl.style.cssText = `width:100%;height:100%;object-fit:${initialFit};background:#000;`;
         container.appendChild(videoEl);
+        videoElRef.current = videoEl;
 
         player = new shaka.Player();
         playerRef.current = player;
@@ -187,7 +298,7 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           return;
         }
 
-        // Shaka UI overlay (creates .shaka-video-container etc.)
+        // Shaka UI overlay
         try {
           new shaka.ui.Overlay(player, container, videoEl);
         } catch {}
@@ -198,14 +309,14 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           player.configure({ drm: { clearKeys } });
         }
 
-        // Request filter — inject token + headers
+        // Request filter — inject token + headers with active User-Agent
         player.getNetworkingEngine().registerRequestFilter((_type: number, request: any) => {
           const reqUrl = request.uris[0] || "";
           if (hdneaToken && isCdn(reqUrl) && !reqUrl.includes(COOKIE_NAME + "=")) {
             request.uris[0] = reqUrl + (reqUrl.includes("?") ? "&" : "?") + COOKIE_NAME + "=" + hdneaToken;
           }
           request.headers["Referer"] = REFERER;
-          request.headers["User-Agent"] = USER_AGENT;
+          request.headers["User-Agent"] = chosenUa;
           request.allowCrossSiteCredentials = false;
         });
 
@@ -237,7 +348,8 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
               player.retryStreaming();
               return;
             }
-            emitPlayer("Playback error: " + d.code, { state: "Error" });
+            setErrorMessage("Playback error: " + d.code);
+            emitPlayer("Playback error: " + d.code, { state: "Error", ua: uaKey });
           }
         });
 
@@ -246,12 +358,12 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
         });
 
         // Load stream
-        emitPlayer("Connecting…", { state: "Connecting" });
+        emitPlayer("Connecting…", { state: "Connecting", ua: uaKey });
         await player.load(url);
 
         if (destroyedRef.current) return;
 
-        emitPlayer("Playing", { state: "Playing" });
+        emitPlayer("Playing", { state: "Playing", ua: uaKey });
 
         // Apply stretch
         const shakaContainer = container.querySelector(".shaka-video-container") as HTMLElement;
@@ -259,7 +371,7 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           shakaContainer.style.setProperty("width", "100%", "important");
           shakaContainer.style.setProperty("height", "100%", "important");
         }
-        videoEl.style.setProperty("object-fit", "fill", "important");
+        videoEl.style.setProperty("object-fit", initialFit, "important");
         videoEl.style.setProperty("width", "100%", "important");
         videoEl.style.setProperty("height", "100%", "important");
 
@@ -272,22 +384,41 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
           videoEl.play().catch(() => {});
         }
 
-        // Quality info
+        // Quality info & tracks
         const updateQuality = () => {
           if (!player || destroyedRef.current) return;
           try {
-            const active = player.getVariantTracks().find((t: any) => t.active);
+            const tracks = player.getVariantTracks();
+            const seen = new Set<number>();
+            const opts: Array<{ height: number; bandwidth: number }> = [];
+            tracks
+              .filter((t: any) => t.height)
+              .sort((a: any, b: any) => (b.height || 0) - (a.height || 0))
+              .forEach((t: any) => {
+                if (!seen.has(t.height)) {
+                  seen.add(t.height);
+                  opts.push({
+                    height: t.height,
+                    bandwidth: Math.round((t.bandwidth || 0) / 1000),
+                  });
+                }
+              });
+            setQualityTracks(opts);
+
+            const active = tracks.find((t: any) => t.active);
             if (active?.height) {
-              emitPlayer("Stream quality updated", { quality: `${active.height}p`, state: "Playing" });
+              emitPlayer("Stream quality updated", { quality: `${active.height}p`, state: "Playing", ua: uaKey });
             }
           } catch {}
         };
         player.addEventListener("adaptation", updateQuality);
+        player.addEventListener("trackschanged", updateQuality);
         updateQuality();
 
         document.title = (channel.name || "Live") + " — PlugX TV";
       } catch (e: any) {
-        emitPlayer("Failed: " + (e?.message ?? "unknown error"), { state: "Error" });
+        setErrorMessage(e?.message ?? "Failed to load channel");
+        emitPlayer("Failed: " + (e?.message ?? "unknown error"), { state: "Error", ua: uaKey });
       }
     })();
 
@@ -297,21 +428,84 @@ export default function ShakaPlayer({ channel }: { channel: Channel }) {
         player.destroy().catch(() => {});
       }
       playerRef.current = null;
-      // Remove our manually-created container — React doesn't know about it
+      videoElRef.current = null;
       if (wrapper && container.parentNode === wrapper) {
         wrapper.removeChild(container);
       }
     };
-  }, [channel.id, channel.mpd_url, channel.clearkey]);
+  }, [channel.id, channel.mpd_url, channel.clearkey, uaKey, retryCount]);
+
+  const isDash = channel.mpd_url?.includes(".mpd");
+  const uaLabel = uaKey === "auto" ? "auto" : uaKey;
+  const infoText = `Shaka • ${isDash ? "DASH" : "HLS"} • UA: ${uaLabel}`;
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-border bg-black shadow-[0_32px_90px_rgba(0,0,0,.45)] sm:rounded-[26px]">
-      {/* wrapperRef is an empty div — React never renders children inside it.
-          The player container is created via DOM API in useEffect. */}
-      <div
-        ref={wrapperRef}
-        className="aspect-video w-full bg-black"
-      />
+    <div className="relative overflow-hidden rounded-[20px] border border-border bg-black shadow-[0_32px_90px_rgba(0,0,0,.45)] sm:rounded-[26px]">
+      {/* wrapperRef is completely empty — React never tracks any children inside */}
+      <div ref={wrapperRef} className="aspect-video w-full bg-black relative" />
+
+      {/* Error overlay (sibling to wrapperRef, NOT inside it) */}
+      {errorMessage && (
+        <div className="absolute inset-x-0 top-0 aspect-video z-20 flex flex-col items-center justify-center gap-3 bg-black/85 p-4 text-center">
+          <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+          <button
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Controls toolbar matching reference player */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card/90 px-3 py-2 text-xs backdrop-blur">
+        {/* Quality select */}
+        <select
+          value={selectedQuality}
+          onChange={(e) => handleQualityChange(e.target.value)}
+          className="h-8 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground outline-none transition hover:border-primary/50 cursor-pointer"
+          title="Video Quality"
+        >
+          <option value="auto">Auto Quality</option>
+          {qualityTracks.map((q) => (
+            <option key={q.height} value={String(q.height)}>
+              {q.height}p ({q.bandwidth} kbps)
+            </option>
+          ))}
+        </select>
+
+        {/* Stretch select */}
+        <select
+          value={stretchMode}
+          onChange={(e) => handleStretchChange(e.target.value)}
+          className="h-8 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground outline-none transition hover:border-primary/50 cursor-pointer"
+          title="Screen Mode"
+        >
+          <option value="contain">🖥 Fit</option>
+          <option value="fill">📐 Fill</option>
+          <option value="cover">🔲 Cover</option>
+          <option value="stretch">↔ Stretch</option>
+        </select>
+
+        {/* User Agent select */}
+        <select
+          value={uaKey}
+          onChange={(e) => handleUaChange(e.target.value as UaKey)}
+          className="h-8 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground outline-none transition hover:border-primary/50 cursor-pointer"
+          title="User Agent (device spoof)"
+        >
+          <option value="auto">🎭 Auto UA</option>
+          <option value="android">🤖 Android (ExoPlayer)</option>
+          <option value="windows">🪟 Windows (Chrome)</option>
+          <option value="ios">🍎 iOS (Safari)</option>
+          <option value="ios_app">🍎 iOS (Hotstar App)</option>
+        </select>
+
+        {/* Info text */}
+        <div className="ml-auto text-[11px] font-medium text-muted-foreground truncate">
+          {infoText}
+        </div>
+      </div>
     </div>
   );
 }
